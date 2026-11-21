@@ -322,7 +322,7 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
                 }
             }
 
-            Dock(
+            if (p.showDock) Dock(
                 modifier = Modifier.entrance(items.size),
                 p = p,
                 apps = appMap,
@@ -403,6 +403,7 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
                 onZone = { overlay = Overlay.ZonePicker },
                 onLite = vm::setLite,
                 onMotion = vm::setMotion,
+                onShowDock = vm::setShowDock,
                 onPerms = askPerms,
                 onNotif = { Intents.notificationAccess(context) },
                 onDefault = { Intents.homeSettings(context) },

@@ -23,6 +23,7 @@ data class AppPrefs(
     val dock: List<String>,
     val firstRun: Boolean,
     val motion: MotionPrefs = MotionPrefs(),
+    val showDock: Boolean = false,
 ) {
     fun homeRaw(t: ThemeId): String? = if (t == ThemeId.LIQUID) homeLiquid else homeHonor
 }
@@ -44,6 +45,7 @@ class Settings(private val context: Context) {
         val animSearch = booleanPreferencesKey("anim_search")
         val animTyping = booleanPreferencesKey("anim_typing")
         val animPress = booleanPreferencesKey("anim_press")
+        val showDock = booleanPreferencesKey("show_dock")
     }
 
     val prefs: Flow<AppPrefs> = context.glassStore.data.map { p: Preferences ->
@@ -65,6 +67,7 @@ class Settings(private val context: Context) {
                 typing = p[K.animTyping] ?: true,
                 press = p[K.animPress] ?: true,
             ),
+            showDock = p[K.showDock] ?: false,
         )
     }
 
@@ -84,6 +87,7 @@ class Settings(private val context: Context) {
             it[K.animPress] = m.press
         }
     }
+    suspend fun setShowDock(v: Boolean) { context.glassStore.edit { it[K.showDock] = v } }
     suspend fun setFirstRunDone() { context.glassStore.edit { it[K.firstRun] = false } }
 
     suspend fun setHome(t: ThemeId, encoded: String?) {

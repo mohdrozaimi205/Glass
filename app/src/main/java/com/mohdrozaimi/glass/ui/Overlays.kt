@@ -381,6 +381,7 @@ fun SettingsOverlay(
     onZone: () -> Unit,
     onLite: (String) -> Unit,
     onMotion: (MotionPrefs) -> Unit,
+    onShowDock: (Boolean) -> Unit,
     onPerms: () -> Unit,
     onNotif: () -> Unit,
     onDefault: () -> Unit,
@@ -461,6 +462,14 @@ fun SettingsOverlay(
                 "Auto untuk telefon ini: " + if (autoLite) "Hidup (kesan dikurangkan)" else "Mati (liquid glass penuh)",
                 12.sp, alpha = 0.65f, maxLines = 2,
             )
+
+            Section("Dok bawah")
+            ToggleRow(
+                "Tunjuk dok",
+                "Bar kaca dengan ikon app di bawah. Bila disorok, leret ke atas untuk buka semua app.",
+                p.showDock,
+                accent,
+            ) { onShowDock(it) }
 
             MotionSettings(p.motion, accent, onMotion)
 
