@@ -37,7 +37,7 @@ jobs:
       - name: Terbitkan ke Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: Glass v1.0.${{ github.run_number }}
-          body: APK launcher Glass (liquid glass). Muat turun Glass.apk dan pasang di telefon.
+          tag_name: v1.1.${{ github.run_number }}
+          name: Glass v1.1.${{ github.run_number }}
+          body: APK launcher Glass (liquid glass) dengan animasi baru. Muat turun Glass.apk dan pasang di telefon.
           files: Glass.apk

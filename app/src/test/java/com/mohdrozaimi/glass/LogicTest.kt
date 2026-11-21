@@ -155,3 +155,43 @@ class SmallUtilsTest {
     @Test fun badgesIgnoreOngoing() =
         assertEquals(mapOf("wa" to 2), countBadges(listOf("wa" to false, "wa" to false, "music" to true)))
 }
+
+class MotionTest {
+    private val m = com.mohdrozaimi.glass.data.MotionPrefs()
+    private val mo = com.mohdrozaimi.glass.data.Motion
+
+    @Test fun normalSpeedKeepsDuration() = assertEquals(500, mo.scale(500, 1f))
+    @Test fun doubleSpeedHalvesDuration() = assertEquals(250, mo.scale(500, 2f))
+    @Test fun halfSpeedDoublesDuration() = assertEquals(1000, mo.scale(500, 0.5f))
+    @Test fun speedIsClamped() {
+        assertEquals(250, mo.scale(500, 10f))
+        assertEquals(1000, mo.scale(500, 0.01f))
+        assertEquals(500, mo.scale(500, Float.NaN))
+    }
+    @Test fun durationNeverZero() = assertEquals(1, mo.scale(0, 1f))
+    @Test fun masterSwitchTurnsEverythingOff() {
+        val off = m.copy(enabled = false)
+        assertFalse(off.entranceOn || off.wavesOn || off.searchingOn || off.typingOn || off.pressOn)
+    }
+    @Test fun singleToggleOnlyAffectsItself() {
+        val noWaves = m.copy(waves = false)
+        assertFalse(noWaves.wavesOn)
+        assertTrue(noWaves.entranceOn && noWaves.pressOn)
+    }
+    @Test fun labels() {
+        assertEquals("1x", mo.speedLabel(1f))
+        assertEquals("0.5x", mo.speedLabel(0.5f))
+        assertEquals("0.75x", mo.speedLabel(0.75f))
+        assertEquals("1.5x", mo.speedLabel(1.5f))
+        assertEquals("2x", mo.speedLabel(2f))
+    }
+    @Test fun greetingByHour() {
+        assertEquals("Selamat pagi", mo.salam(7))
+        assertEquals("Selamat tengah hari", mo.salam(12))
+        assertEquals("Selamat petang", mo.salam(16))
+        assertEquals("Selamat malam", mo.salam(21))
+        assertEquals("Selamat malam", mo.salam(3))
+    }
+    @Test fun greetingWidgetSize() =
+        assertEquals(4 to 1, HomeGrid.defaultSize(WidgetKind.GREETING))
+}

@@ -4,6 +4,7 @@ import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
 import android.graphics.Shader
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -94,12 +95,23 @@ fun GlassCard(
     val interaction = remember { MutableInteractionSource() }
     val shader = remember { RuntimeShader(GlassShaders.REFRACTION) }
 
-    LaunchedEffect(interaction, pressEffect) {
+    val motion = LocalMotion.current
+    val waveTime = LocalWaveTime.current
+    LaunchedEffect(interaction, pressEffect, motion) {
         if (!pressEffect) return@LaunchedEffect
         interaction.interactions.collect { i ->
             when (i) {
-                is PressInteraction.Press -> press.animateTo(1f, tween(120))
-                is PressInteraction.Release, is PressInteraction.Cancel -> press.animateTo(0f, tween(260))
+                is PressInteraction.Press ->
+                    if (motion.enabled) press.animateTo(1f, tween(motion.ms(120))) else press.snapTo(1f)
+                is PressInteraction.Release, is PressInteraction.Cancel -> when {
+                    // Lantunan: kad mengembang sedikit melepasi saiz asal, kemudian kembali
+                    motion.pressOn -> press.animateTo(
+                        0f,
+                        spring(dampingRatio = 0.32f, stiffness = 420f * motion.speed * motion.speed),
+                    )
+                    motion.enabled -> press.animateTo(0f, tween(motion.ms(260)))
+                    else -> press.snapTo(0f)
+                }
             }
         }
     }
@@ -116,7 +128,7 @@ fun GlassCard(
     Box(
         modifier
             .graphicsLayer {
-                val s = 1f - 0.03f * press.value
+                val s = 1f - (if (motion.pressOn) 0.045f else 0.03f) * press.value
                 scaleX = s
                 scaleY = s
             }
@@ -145,14 +157,19 @@ fun GlassCard(
                     } else {
                         shader.setFloatUniform("size", cardSize.width.toFloat(), cardSize.height.toFloat())
                         shader.setFloatUniform("radius", with(density) { cornerRadius.toPx() })
-                        shader.setFloatUniform("strength", refraction + 0.2f * press.value)
+                        shader.setFloatUniform("strength", refraction + 0.2f * press.value.coerceAtLeast(0f))
                         RenderEffect.createChainEffect(
                             RenderEffect.createRuntimeShaderEffect(shader, "content"),
                             blurFx,
                         ).asComposeRenderEffect()
                     }
                 }
-                .drawBehind { if (bd != null) drawBackdrop(bd, pos) },
+                .drawBehind {
+                    if (bd != null) {
+                        drawBackdrop(bd, pos)
+                        if (waveTime != null) drawPastelWaves(waveTime.value, bd.screen, pos)
+                    }
+                },
         )
         // Warna kaca + bingkai bercahaya
         Box(

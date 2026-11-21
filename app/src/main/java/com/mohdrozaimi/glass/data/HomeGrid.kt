@@ -14,7 +14,8 @@ enum class WidgetKind(val label: String) {
     WEATHER("Cuaca"),
     MAP("Peta"),
     SEARCH("Carian Google"),
-    PRAYER("Waktu Solat");
+    PRAYER("Waktu Solat"),
+    GREETING("Sapaan");
 
     companion object {
         fun from(s: String): WidgetKind? = entries.firstOrNull { it.name == s }
@@ -153,6 +154,7 @@ object HomeGrid {
         WidgetKind.CLOCK -> 4 to 2
         WidgetKind.SEARCH -> 4 to 1
         WidgetKind.PRAYER -> 4 to 1
+        WidgetKind.GREETING -> 4 to 1
         else -> 2 to 2
     }
 }

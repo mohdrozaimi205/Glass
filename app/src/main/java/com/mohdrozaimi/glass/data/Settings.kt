@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -21,6 +22,7 @@ data class AppPrefs(
     val homeHonor: String?,
     val dock: List<String>,
     val firstRun: Boolean,
+    val motion: MotionPrefs = MotionPrefs(),
 ) {
     fun homeRaw(t: ThemeId): String? = if (t == ThemeId.LIQUID) homeLiquid else homeHonor
 }
@@ -35,6 +37,13 @@ class Settings(private val context: Context) {
         val homeHonor = stringPreferencesKey("home_HONOR")
         val dock = stringPreferencesKey("dock")
         val firstRun = booleanPreferencesKey("first_run")
+        val animSpeed = floatPreferencesKey("anim_speed")
+        val animAll = booleanPreferencesKey("anim_all")
+        val animEntrance = booleanPreferencesKey("anim_entrance")
+        val animWaves = booleanPreferencesKey("anim_waves")
+        val animSearch = booleanPreferencesKey("anim_search")
+        val animTyping = booleanPreferencesKey("anim_typing")
+        val animPress = booleanPreferencesKey("anim_press")
     }
 
     val prefs: Flow<AppPrefs> = context.glassStore.data.map { p: Preferences ->
@@ -47,6 +56,15 @@ class Settings(private val context: Context) {
             homeHonor = p[K.homeHonor],
             dock = DockList.decode(p[K.dock]),
             firstRun = p[K.firstRun] ?: true,
+            motion = MotionPrefs(
+                speed = Motion.clampSpeed(p[K.animSpeed] ?: 1f),
+                enabled = p[K.animAll] ?: true,
+                entrance = p[K.animEntrance] ?: true,
+                waves = p[K.animWaves] ?: true,
+                searching = p[K.animSearch] ?: true,
+                typing = p[K.animTyping] ?: true,
+                press = p[K.animPress] ?: true,
+            ),
         )
     }
 
@@ -55,6 +73,17 @@ class Settings(private val context: Context) {
     suspend fun setZone(z: String) { context.glassStore.edit { it[K.zone] = z } }
     suspend fun setLite(v: String) { context.glassStore.edit { it[K.lite] = v } }
     suspend fun setDock(list: List<String>) { context.glassStore.edit { it[K.dock] = DockList.encode(list) } }
+    suspend fun setMotion(m: MotionPrefs) {
+        context.glassStore.edit {
+            it[K.animSpeed] = Motion.clampSpeed(m.speed)
+            it[K.animAll] = m.enabled
+            it[K.animEntrance] = m.entrance
+            it[K.animWaves] = m.waves
+            it[K.animSearch] = m.searching
+            it[K.animTyping] = m.typing
+            it[K.animPress] = m.press
+        }
+    }
     suspend fun setFirstRunDone() { context.glassStore.edit { it[K.firstRun] = false } }
 
     suspend fun setHome(t: ThemeId, encoded: String?) {

@@ -40,7 +40,6 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -294,13 +293,12 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawMap(img: ImageB
 
 // ------------------------------------------------------------------ CARIAN GOOGLE
 @Composable
-fun SearchWidget(s: WidgetStyle, w: Int) {
-    val context = LocalContext.current
+fun SearchWidget(s: WidgetStyle, w: Int, onSearch: (String) -> Unit) {
     val focus = LocalFocusManager.current
     var q by remember { mutableStateOf("") }
     fun go() {
-        val url = searchUrl(q) ?: return
-        Intents.openUrl(context, url)
+        if (searchUrl(q) == null) return
+        onSearch(q)
         q = ""
         focus.clearFocus()
     }

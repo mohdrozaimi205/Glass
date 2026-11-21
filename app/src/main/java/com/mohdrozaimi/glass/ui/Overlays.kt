@@ -38,6 +38,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -63,6 +65,8 @@ import com.mohdrozaimi.glass.data.AppEntry
 import com.mohdrozaimi.glass.data.AppPrefs
 import com.mohdrozaimi.glass.data.HomeGrid
 import com.mohdrozaimi.glass.data.HomeItem
+import com.mohdrozaimi.glass.data.Motion
+import com.mohdrozaimi.glass.data.MotionPrefs
 import com.mohdrozaimi.glass.data.PrayerZones
 import com.mohdrozaimi.glass.data.ThemeId
 import com.mohdrozaimi.glass.data.Wallpapers
@@ -362,6 +366,7 @@ private fun kindEmoji(k: WidgetKind) = when (k) {
     WidgetKind.MAP -> "🗺️"
     WidgetKind.SEARCH -> "🔍"
     WidgetKind.PRAYER -> "🕌"
+    WidgetKind.GREETING -> "👋"
 }
 
 // ======================================================= TETAPAN
@@ -375,6 +380,7 @@ fun SettingsOverlay(
     onPickPhoto: () -> Unit,
     onZone: () -> Unit,
     onLite: (String) -> Unit,
+    onMotion: (MotionPrefs) -> Unit,
     onPerms: () -> Unit,
     onNotif: () -> Unit,
     onDefault: () -> Unit,
@@ -456,6 +462,8 @@ fun SettingsOverlay(
                 12.sp, alpha = 0.65f, maxLines = 2,
             )
 
+            MotionSettings(p.motion, accent, onMotion)
+
             Section("Kebenaran")
             RowButton(
                 "Lencana notifikasi",
@@ -469,10 +477,83 @@ fun SettingsOverlay(
             RowButton("Set semula susun atur", "Kembalikan home screen tema ini ke asal", onReset)
 
             Spacer(Modifier.height(24.dp))
-            GText("Glass v1.0 · Liquid Glass Launcher", 11.sp, alpha = 0.45f)
+            GText("Glass v1.1 · Liquid Glass Launcher", 11.sp, alpha = 0.45f)
             Spacer(Modifier.height(24.dp))
         }
     }
+}
+
+// ======================================================= ANIMASI
+@Composable
+private fun MotionSettings(m: MotionPrefs, accent: Color, onMotion: (MotionPrefs) -> Unit) {
+    Section("Animasi")
+    ToggleRow("Hidupkan animasi", "Matikan semua untuk jimat bateri", m.enabled, accent) { onMotion(m.copy(enabled = it)) }
+
+    Spacer(Modifier.height(4.dp))
+    GText("Kelajuan: " + Motion.speedLabel(m.speed), 14.sp, weight = FontWeight.Medium, alpha = if (m.enabled) 1f else 0.4f)
+    Spacer(Modifier.height(8.dp))
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (v in Motion.SPEEDS) {
+            val label = when (v) {
+                0.5f -> "0.5x Perlahan"
+                1f -> "1x Biasa"
+                2f -> "2x Laju"
+                else -> Motion.speedLabel(v)
+            }
+            Chip(label, m.speed == v, accent, enabled = m.enabled) { onMotion(m.copy(speed = v)) }
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    GText("Pratonton (ketik untuk main semula)", 12.sp, alpha = 0.65f)
+    Spacer(Modifier.height(6.dp))
+    MotionPreview(m, accent)
+    Spacer(Modifier.height(12.dp))
+
+    ToggleRow("Kad muncul satu-satu", "Widget naik & pudar masuk bila buka home", m.entrance, accent, m.enabled) { onMotion(m.copy(entrance = it)) }
+    ToggleRow("Latar gelombang pastel", "Gelombang lembut bergerak di belakang kaca", m.waves, accent, m.enabled) { onMotion(m.copy(waves = it)) }
+    ToggleRow("Skrin \"Mencari…\"", "Animasi gelombang sebelum carian Google dibuka", m.searching, accent, m.enabled) { onMotion(m.copy(searching = it)) }
+    ToggleRow("Teks sapaan menaip", "Widget Sapaan ditaip huruf demi huruf", m.typing, accent, m.enabled) { onMotion(m.copy(typing = it)) }
+    ToggleRow("Kesan tekan melantun", "Kad mengembang lembut bila dilepaskan", m.press, accent, m.enabled) { onMotion(m.copy(press = it)) }
+    GText("Tip: matikan latar gelombang jika bateri cepat habis.", 12.sp, alpha = 0.55f, maxLines = 2)
+}
+
+@Composable
+private fun ToggleRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    accent: Color,
+    enabled: Boolean = true,
+    onChange: (Boolean) -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = if (enabled) 0.10f else 0.04f))
+            .clickable(enabled = enabled) { onChange(!checked) }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            GText(title, 15.sp, weight = FontWeight.Medium, alpha = if (enabled) 1f else 0.4f)
+            GText(subtitle, 12.sp, alpha = if (enabled) 0.65f else 0.3f, maxLines = 2)
+        }
+        Spacer(Modifier.width(10.dp))
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            enabled = enabled,
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = accent,
+                checkedThumbColor = Color.Black,
+                uncheckedTrackColor = Color.White.copy(alpha = 0.15f),
+                uncheckedThumbColor = Color.White.copy(alpha = 0.8f),
+                uncheckedBorderColor = Color.White.copy(alpha = 0.3f),
+            ),
+        )
+    }
+    Spacer(Modifier.height(8.dp))
 }
 
 // ======================================================= ZON SOLAT

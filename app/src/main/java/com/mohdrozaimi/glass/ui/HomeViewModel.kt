@@ -148,6 +148,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun setTheme(t: ThemeId) = viewModelScope.launch { settings.setTheme(t) }
     fun setZone(z: String) = viewModelScope.launch { settings.setZone(z) }
     fun setLite(v: String) = viewModelScope.launch { settings.setLite(v) }
+    fun setMotion(m: com.mohdrozaimi.glass.data.MotionPrefs) = viewModelScope.launch { settings.setMotion(m) }
     fun setPresetWallpaper(i: Int) = viewModelScope.launch { settings.setWallpaper("preset:$i") }
     fun firstRunDone() = viewModelScope.launch { settings.setFirstRunDone() }
 

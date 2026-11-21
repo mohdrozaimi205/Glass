@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -44,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -66,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mohdrozaimi.glass.data.AppEntry
 import com.mohdrozaimi.glass.data.AppPrefs
@@ -78,6 +81,12 @@ import com.mohdrozaimi.glass.data.searchUrl
 import com.mohdrozaimi.glass.glass.Backdrop
 import com.mohdrozaimi.glass.glass.GlassCard
 import com.mohdrozaimi.glass.glass.LocalBackdrop
+import com.mohdrozaimi.glass.glass.LocalHomeVisit
+import com.mohdrozaimi.glass.glass.LocalMotion
+import com.mohdrozaimi.glass.glass.LocalWaveTime
+import com.mohdrozaimi.glass.glass.TWO_PI
+import com.mohdrozaimi.glass.glass.drawPastelWaves
+import com.mohdrozaimi.glass.glass.entrance
 import com.mohdrozaimi.glass.glass.PerfMode
 import com.mohdrozaimi.glass.glass.drawBackdrop
 import com.mohdrozaimi.glass.notif.BadgeStore
@@ -98,6 +107,7 @@ sealed interface Overlay {
     data class ItemMenu(val id: String) : Overlay
     data object WidgetPicker : Overlay
     data object ZonePicker : Overlay
+    data class Searching(val query: String, val url: String) : Overlay
 }
 
 @Composable
@@ -115,10 +125,28 @@ fun GlassRoot(vm: HomeViewModel, widgets: WidgetController) {
         val lite = PerfMode.resolve(p.lite, vm.autoLite)
         val img = wallpaper
         val bd = if (img != null && screen.width > 0f) Backdrop(img, screen, lite) else null
-        if (bd != null) {
-            Canvas(Modifier.fillMaxSize()) { drawBackdrop(bd.copy(dim = 0.04f), Offset.Zero) }
+        val waveTime = if (p.motion.wavesOn) {
+            val tr = rememberInfiniteTransition(label = "waves")
+            tr.animateFloat(
+                0f,
+                TWO_PI,
+                infiniteRepeatable(tween(p.motion.ms(18000), easing = LinearEasing)),
+                label = "waveTime",
+            )
+        } else {
+            null
         }
-        CompositionLocalProvider(LocalBackdrop provides bd) {
+        if (bd != null) {
+            Canvas(Modifier.fillMaxSize()) {
+                drawBackdrop(bd.copy(dim = 0.04f), Offset.Zero)
+                if (waveTime != null) drawPastelWaves(waveTime.value, bd.screen, Offset.Zero)
+            }
+        }
+        CompositionLocalProvider(
+            LocalBackdrop provides bd,
+            LocalMotion provides p.motion,
+            LocalWaveTime provides waveTime,
+        ) {
             HomeScreen(vm, widgets, p)
         }
     }
@@ -143,6 +171,11 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
 
     var overlay by remember { mutableStateOf<Overlay>(Overlay.None) }
     var edit by remember { mutableStateOf(false) }
+    var visit by remember { mutableIntStateOf(0) }
+    LifecycleStartEffect(Unit) {
+        visit++
+        onStopOrDispose { }
+    }
 
     val now by produceState(LocalDateTime.now()) {
         while (true) {
@@ -191,6 +224,7 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
     BackHandler(enabled = true) {
         when {
             overlay == Overlay.ZonePicker -> overlay = Overlay.Settings
+            overlay is Overlay.Searching -> overlay = Overlay.None
             overlay != Overlay.None -> overlay = Overlay.None
             edit -> edit = false
         }
@@ -199,6 +233,7 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
     val wiggle = rememberInfiniteTransition(label = "wiggle")
     val angle by wiggle.animateFloat(-1.3f, 1.3f, infiniteRepeatable(tween(150), RepeatMode.Reverse), label = "angle")
 
+    CompositionLocalProvider(LocalHomeVisit provides visit) {
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier
@@ -268,8 +303,14 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
                                 WidgetKind.CALENDAR -> CalendarWidget(data, style, item.w, item.h, onAdd = { Intents.addEvent(context) }, onGrant = askPerms)
                                 WidgetKind.WEATHER -> WeatherWidget(data, style, item.w, item.h, onGrant = askPerms)
                                 WidgetKind.MAP -> MapWidget(data, style, onGrant = askPerms)
-                                WidgetKind.SEARCH -> SearchWidget(style, item.w)
+                                WidgetKind.SEARCH -> SearchWidget(style, item.w) { q ->
+                                    val url = searchUrl(q)
+                                    if (url != null) {
+                                        if (p.motion.searchingOn) overlay = Overlay.Searching(q.trim(), url) else Intents.openUrl(context, url)
+                                    }
+                                }
                                 WidgetKind.PRAYER -> PrayerWidget(data, style, item.w, item.h)
+                                WidgetKind.GREETING -> GreetingWidget(data, style, item.w, item.h)
                             }
                         }
                     }
@@ -282,6 +323,7 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
             }
 
             Dock(
+                modifier = Modifier.entrance(items.size),
                 p = p,
                 apps = appMap,
                 badges = badges,
@@ -360,6 +402,7 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
                 onPickPhoto = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 onZone = { overlay = Overlay.ZonePicker },
                 onLite = vm::setLite,
+                onMotion = vm::setMotion,
                 onPerms = askPerms,
                 onNotif = { Intents.notificationAccess(context) },
                 onDefault = { Intents.homeSettings(context) },
@@ -378,8 +421,13 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
                 },
                 onClose = { overlay = Overlay.Settings },
             )
+            is Overlay.Searching -> SearchingOverlay(o.query) {
+                Intents.openUrl(context, o.url)
+                overlay = Overlay.None
+            }
             Overlay.None -> Unit
         }
+    }
     }
 }
 
@@ -435,9 +483,12 @@ private fun HomeGridView(
     ) {
         val cellW = maxWidth / com.mohdrozaimi.glass.data.HomeGrid.COLS
         val cellH = maxHeight / com.mohdrozaimi.glass.data.HomeGrid.ROWS
+        val order = remember(items) {
+            items.sortedWith(compareBy({ it.y }, { it.x })).withIndex().associate { it.value.id to it.index }
+        }
         for (item in items) {
             androidx.compose.runtime.key(item.id) {
-                GridCell(item, cellW, cellH, edit, wiggle, onMove, onTap, onRemove, content)
+                GridCell(item, order[item.id] ?: 0, cellW, cellH, edit, wiggle, onMove, onTap, onRemove, content)
             }
         }
     }
@@ -446,6 +497,7 @@ private fun HomeGridView(
 @Composable
 private fun GridCell(
     item: HomeItem,
+    order: Int,
     cellW: Dp,
     cellH: Dp,
     edit: Boolean,
@@ -465,6 +517,7 @@ private fun GridCell(
         Modifier
             .offset { IntOffset((item.x * cw + drag.x).roundToInt(), (item.y * ch + drag.y).roundToInt()) }
             .size(cellW * item.w, cellH * item.h)
+            .entrance(order)
             .zIndex(if (dragging) 2f else 0f)
             .graphicsLayer {
                 rotationZ = if (edit && !dragging) wiggle() else 0f
@@ -517,6 +570,7 @@ private fun GridCell(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Dock(
+    modifier: Modifier,
     p: AppPrefs,
     apps: Map<String, AppEntry>,
     badges: Map<String, Int>,
@@ -528,7 +582,7 @@ private fun Dock(
     onLongPress: () -> Unit,
 ) {
     GlassCard(
-        modifier = Modifier.fillMaxWidth().height(86.dp),
+        modifier = modifier.fillMaxWidth().height(86.dp),
         cornerRadius = 34.dp,
         onLongClick = onLongPress,
     ) {
