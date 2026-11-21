@@ -195,3 +195,28 @@ class MotionTest {
     @Test fun greetingWidgetSize() =
         assertEquals(4 to 1, HomeGrid.defaultSize(WidgetKind.GREETING))
 }
+
+class UpdateTest {
+    private val u = com.mohdrozaimi.glass.data.Update
+
+    @Test fun newerPatch() = assertTrue(u.isNewer("1.1.7", "1.1.4"))
+    @Test fun newerMinor() = assertTrue(u.isNewer("1.2.0", "1.1.9"))
+    @Test fun sameIsNotNewer() = assertFalse(u.isNewer("1.1.4", "1.1.4"))
+    @Test fun olderIsNotNewer() = assertFalse(u.isNewer("1.1.3", "1.1.4"))
+    @Test fun numericNotText() = assertTrue(u.isNewer("1.1.10", "1.1.9"))
+    @Test fun oldVersionNameWithoutBuild() = assertTrue(u.isNewer("1.1.5", "1.1"))
+    @Test fun tagPrefixIgnored() = assertTrue(u.isNewer("v1.1.5", "1.1.4"))
+
+    @Test fun parsesRelease() {
+        val json = """{"tag_name":"v1.1.6","body":"Animasi baru","assets":[
+            {"name":"notes.txt","browser_download_url":"x","size":1},
+            {"name":"Glass.apk","browser_download_url":"https://e.x/Glass.apk","size":24457949}]}"""
+        val r = u.parse(json)!!
+        assertEquals("1.1.6", r.version)
+        assertEquals("https://e.x/Glass.apk", r.apkUrl)
+        assertEquals(24457949L, r.sizeBytes)
+        assertEquals("Animasi baru", r.notes)
+    }
+    @Test fun noApkGivesNull() = assertNull(u.parse("""{"tag_name":"v1.1.6","assets":[]}"""))
+    @Test fun sizeLabel() = assertEquals("23.3 MB", u.sizeLabel(24457949L))
+}

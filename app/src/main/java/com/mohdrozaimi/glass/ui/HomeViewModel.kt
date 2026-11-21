@@ -43,6 +43,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
+sealed interface UpdateState {
+    data object Idle : UpdateState
+    data object Checking : UpdateState
+    data object UpToDate : UpdateState
+    data class Available(val r: com.mohdrozaimi.glass.data.ReleaseInfo) : UpdateState
+    data class Downloading(val r: com.mohdrozaimi.glass.data.ReleaseInfo, val progress: Float) : UpdateState
+    data class Ready(val r: com.mohdrozaimi.glass.data.ReleaseInfo, val file: java.io.File) : UpdateState
+    data class Failed(val msg: String) : UpdateState
+}
+
 data class MapView(val image: ImageBitmap, val point: Pair<Float, Float>, val lat: Double, val lon: Double)
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
@@ -233,6 +243,65 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun removeFromDock(pkg: String) = viewModelScope.launch { settings.updateDock { DockList.remove(it, pkg) } }
+
+    // ---------------- kemas kini app ----------------
+    private val updater = com.mohdrozaimi.glass.data.Updater(app)
+    val currentVersion: String = updater.currentVersion()
+    private val _update = MutableStateFlow<UpdateState>(UpdateState.Idle)
+    val update: StateFlow<UpdateState> = _update.asStateFlow()
+
+    fun checkUpdate() {
+        if (_update.value is UpdateState.Checking || _update.value is UpdateState.Downloading) return
+        _update.value = UpdateState.Checking
+        viewModelScope.launch {
+            _update.value = try {
+                val r = updater.latest()
+                when {
+                    r == null -> UpdateState.Failed("Tiada fail APK dalam versi terbaru")
+                    com.mohdrozaimi.glass.data.Update.isNewer(r.version, currentVersion) -> UpdateState.Available(r)
+                    else -> UpdateState.UpToDate
+                }
+            } catch (e: Exception) {
+                UpdateState.Failed("Tak dapat semak. Pastikan ada internet.")
+            }
+        }
+    }
+
+    fun downloadUpdate() {
+        val r = when (val s = _update.value) {
+            is UpdateState.Available -> s.r
+            is UpdateState.Failed -> return checkUpdate()
+            else -> return
+        }
+        _update.value = UpdateState.Downloading(r, 0f)
+        viewModelScope.launch {
+            _update.value = try {
+                val f = updater.download(r) { p -> _update.value = UpdateState.Downloading(r, p) }
+                installOrAsk(f)
+                UpdateState.Ready(r, f)
+            } catch (e: Exception) {
+                UpdateState.Failed("Muat turun gagal. Cuba lagi.")
+            }
+        }
+    }
+
+    fun installUpdate() {
+        val s = _update.value as? UpdateState.Ready ?: return
+        installOrAsk(s.file)
+    }
+
+    private fun installOrAsk(f: java.io.File) {
+        try {
+            if (updater.canInstall()) {
+                updater.install(f)
+            } else {
+                toast("Benarkan Glass memasang app, kemudian tekan Pasang")
+                updater.openInstallPermission()
+            }
+        } catch (e: Exception) {
+            toast("Tak dapat buka pemasangan")
+        }
+    }
 
     fun toast(msg: String) = Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
 

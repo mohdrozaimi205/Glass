@@ -69,6 +69,7 @@ import com.mohdrozaimi.glass.data.Motion
 import com.mohdrozaimi.glass.data.MotionPrefs
 import com.mohdrozaimi.glass.data.PrayerZones
 import com.mohdrozaimi.glass.data.ThemeId
+import com.mohdrozaimi.glass.data.Update
 import com.mohdrozaimi.glass.data.Wallpapers
 import com.mohdrozaimi.glass.data.WidgetKind
 import com.mohdrozaimi.glass.glass.GlassCard
@@ -382,6 +383,11 @@ fun SettingsOverlay(
     onLite: (String) -> Unit,
     onMotion: (MotionPrefs) -> Unit,
     onShowDock: (Boolean) -> Unit,
+    version: String,
+    update: UpdateState,
+    onCheckUpdate: () -> Unit,
+    onDownloadUpdate: () -> Unit,
+    onInstallUpdate: () -> Unit,
     onPerms: () -> Unit,
     onNotif: () -> Unit,
     onDefault: () -> Unit,
@@ -473,6 +479,8 @@ fun SettingsOverlay(
 
             MotionSettings(p.motion, accent, onMotion)
 
+            UpdateSection(version, update, accent, onCheckUpdate, onDownloadUpdate, onInstallUpdate)
+
             Section("Kebenaran")
             RowButton(
                 "Lencana notifikasi",
@@ -486,10 +494,62 @@ fun SettingsOverlay(
             RowButton("Set semula susun atur", "Kembalikan home screen tema ini ke asal", onReset)
 
             Spacer(Modifier.height(24.dp))
-            GText("Glass v1.1 · Liquid Glass Launcher", 11.sp, alpha = 0.45f)
+            GText("Glass v$version · Liquid Glass Launcher", 11.sp, alpha = 0.45f)
             Spacer(Modifier.height(24.dp))
         }
     }
+}
+
+// ======================================================= KEMAS KINI
+@Composable
+private fun UpdateSection(
+    version: String,
+    u: UpdateState,
+    accent: Color,
+    onCheck: () -> Unit,
+    onDownload: () -> Unit,
+    onInstall: () -> Unit,
+) {
+    Section("Kemas kini")
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.10f))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        GText("Versi semasa: $version", 15.sp, weight = FontWeight.Medium)
+        val (status, color) = when (u) {
+            UpdateState.Idle -> "Tekan untuk semak versi terbaru" to Color.White
+            UpdateState.Checking -> "Sedang menyemak…" to Color.White
+            UpdateState.UpToDate -> "Anda sudah guna versi terbaru ✓" to accent
+            is UpdateState.Available -> ("Versi baru ada: v${u.r.version}  " + Update.sizeLabel(u.r.sizeBytes)) to accent
+            is UpdateState.Downloading -> "Memuat turun v${u.r.version}… ${(u.progress * 100).toInt()}%" to Color.White
+            is UpdateState.Ready -> "v${u.r.version} siap dimuat turun" to accent
+            is UpdateState.Failed -> u.msg to Color(0xFFFF8A8A)
+        }
+        GText(status, 12.sp, color = color, alpha = if (color == Color.White) 0.7f else 1f, maxLines = 2)
+
+        if (u is UpdateState.Downloading) {
+            Spacer(Modifier.height(10.dp))
+            Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.15f))) {
+                Box(Modifier.fillMaxWidth(u.progress.coerceIn(0.02f, 1f)).height(6.dp).clip(RoundedCornerShape(50)).background(accent))
+            }
+        }
+        if (u is UpdateState.Available && u.r.notes.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            GText(u.r.notes, 12.sp, alpha = 0.6f, maxLines = 3)
+        }
+
+        Spacer(Modifier.height(12.dp))
+        when (u) {
+            is UpdateState.Available -> Chip("Muat turun & pasang", true, accent) { onDownload() }
+            is UpdateState.Ready -> Chip("Pasang sekarang", true, accent) { onInstall() }
+            is UpdateState.Downloading, UpdateState.Checking -> Chip("Sila tunggu…", false, accent, enabled = false) { }
+            else -> Chip("Semak kemas kini", false, accent) { onCheck() }
+        }
+    }
+    Spacer(Modifier.height(8.dp))
 }
 
 // ======================================================= ANIMASI

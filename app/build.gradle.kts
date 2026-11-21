@@ -12,14 +12,29 @@ android {
         applicationId = "com.mohdrozaimi.glass"
         minSdk = 33
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+        // Nombor binaan GitHub Actions (cth v1.1.7 → versionCode 7) supaya semakan kemas kini tahu versi mana lebih baru
+        val run = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 0
+        versionCode = 100 + run
+        versionName = "1.1.$run"
+    }
+
+    // Kunci tetap: setiap APK ditandatangani sama, jadi kemas kini boleh dipasang terus atas versi lama
+    signingConfigs {
+        create("fixed") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("fixed")
+        }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("fixed")
         }
     }
     compileOptions {

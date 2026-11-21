@@ -168,6 +168,7 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
     val events by vm.events.collectAsStateWithLifecycle()
     val map by vm.map.collectAsStateWithLifecycle()
     val location by vm.location.collectAsStateWithLifecycle()
+    val update by vm.update.collectAsStateWithLifecycle()
 
     var overlay by remember { mutableStateOf<Overlay>(Overlay.None) }
     var edit by remember { mutableStateOf(false) }
@@ -404,6 +405,11 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
                 onLite = vm::setLite,
                 onMotion = vm::setMotion,
                 onShowDock = vm::setShowDock,
+                version = vm.currentVersion,
+                update = update,
+                onCheckUpdate = vm::checkUpdate,
+                onDownloadUpdate = vm::downloadUpdate,
+                onInstallUpdate = vm::installUpdate,
                 onPerms = askPerms,
                 onNotif = { Intents.notificationAccess(context) },
                 onDefault = { Intents.homeSettings(context) },
