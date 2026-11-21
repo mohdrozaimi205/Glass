@@ -5,7 +5,6 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -17,8 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
 import com.mohdrozaimi.glass.data.MotionPrefs
 import kotlinx.coroutines.delay
 import kotlin.math.PI
@@ -27,9 +24,6 @@ import kotlin.math.sin
 
 /** Tetapan animasi semasa untuk seluruh launcher. */
 val LocalMotion = staticCompositionLocalOf { MotionPrefs() }
-
-/** Masa gelombang (0..2π, berulang). Null bila latar gelombang dimatikan. */
-val LocalWaveTime = staticCompositionLocalOf<State<Float>?> { null }
 
 /** Bertambah setiap kali home screen dibuka semula; mencetuskan animasi masuk. */
 val LocalHomeVisit = compositionLocalOf { 0 }
@@ -42,10 +36,7 @@ private val WaveColors = listOf(
     Color(0xFFFFC3DD), // merah jambu lembut
 )
 
-/**
- * Lukis gelombang pastel yang bergerak perlahan, selari dengan kedudukan [origin] di skrin
- * supaya gelombang di dalam kad kaca bersambung dengan gelombang di latar.
- */
+/** Lukis gelombang pastel yang bergerak perlahan (dianjak ikut [origin]). */
 fun DrawScope.drawPastelWaves(t: Float, screen: Size, origin: Offset, strength: Float = 1f) {
     if (screen.width <= 0f || screen.height <= 0f) return
     val w = screen.width
@@ -93,7 +84,8 @@ fun DrawScope.drawPastelWaves(t: Float, screen: Size, origin: Offset, strength: 
 }
 
 /**
- * Animasi masuk: item pudar masuk sambil naik perlahan, satu demi satu ikut [order].
+ * Animasi masuk: item pudar masuk satu demi satu ikut [order].
+ * Hanya alpha (tanpa gerak/zoom) supaya kaca tidak perlu dikaburkan semula setiap frame.
  * Dimainkan semula setiap kali home screen dibuka.
  */
 @Composable
@@ -110,13 +102,5 @@ fun Modifier.entrance(order: Int): Modifier {
         delay(motion.ms(70).toLong() * order.coerceAtMost(12))
         appear.animateTo(1f, tween(motion.ms(560), easing = FastOutSlowInEasing))
     }
-    val lift = with(LocalDensity.current) { 36.dp.toPx() }
-    return this.graphicsLayer {
-        val a = appear.value
-        alpha = a
-        translationY = (1f - a) * lift
-        val s = 0.94f + 0.06f * a
-        scaleX = s
-        scaleY = s
-    }
+    return this.graphicsLayer { alpha = appear.value }
 }

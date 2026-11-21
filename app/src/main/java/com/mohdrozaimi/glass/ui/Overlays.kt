@@ -65,6 +65,7 @@ import com.mohdrozaimi.glass.data.AppEntry
 import com.mohdrozaimi.glass.data.AppPrefs
 import com.mohdrozaimi.glass.data.HomeGrid
 import com.mohdrozaimi.glass.data.HomeItem
+import com.mohdrozaimi.glass.data.IconSize
 import com.mohdrozaimi.glass.data.Motion
 import com.mohdrozaimi.glass.data.MotionPrefs
 import com.mohdrozaimi.glass.data.PrayerZones
@@ -360,7 +361,7 @@ fun WidgetPickerOverlay(
     }
 }
 
-private fun kindEmoji(k: WidgetKind) = when (k) {
+fun kindEmoji(k: WidgetKind) = when (k) {
     WidgetKind.CLOCK -> "🕒"
     WidgetKind.CALENDAR -> "📅"
     WidgetKind.WEATHER -> "⛅"
@@ -383,6 +384,7 @@ fun SettingsOverlay(
     onLite: (String) -> Unit,
     onMotion: (MotionPrefs) -> Unit,
     onShowDock: (Boolean) -> Unit,
+    onIconSize: (String) -> Unit,
     version: String,
     update: UpdateState,
     onCheckUpdate: () -> Unit,
@@ -468,6 +470,11 @@ fun SettingsOverlay(
                 "Auto untuk telefon ini: " + if (autoLite) "Hidup (kesan dikurangkan)" else "Mati (liquid glass penuh)",
                 12.sp, alpha = 0.65f, maxLines = 2,
             )
+
+            Section("Saiz ikon (app & widget 1x1)")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (k in IconSize.KEYS) Chip(IconSize.label(k), p.iconSize == k, accent) { onIconSize(k) }
+            }
 
             Section("Dok bawah")
             ToggleRow(

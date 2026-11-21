@@ -22,6 +22,21 @@ data class MotionPrefs(
     fun ms(baseMs: Int): Int = Motion.scale(baseMs, speed)
 }
 
+/** Saiz ikon app & widget 1x1: "S" Kecil, "M" Sederhana, "L" Besar. */
+object IconSize {
+    val KEYS = listOf("S", "M", "L")
+    fun dp(key: String): Int = when (key) {
+        "S" -> 46
+        "L" -> 62
+        else -> 54
+    }
+    fun label(key: String): String = when (key) {
+        "S" -> "Kecil"
+        "L" -> "Besar"
+        else -> "Sederhana"
+    }
+}
+
 object Motion {
     const val MIN_SPEED = 0.5f
     const val MAX_SPEED = 2f

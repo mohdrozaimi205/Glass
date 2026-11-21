@@ -24,6 +24,7 @@ data class AppPrefs(
     val firstRun: Boolean,
     val motion: MotionPrefs = MotionPrefs(),
     val showDock: Boolean = false,
+    val iconSize: String = "M",
 ) {
     fun homeRaw(t: ThemeId): String? = if (t == ThemeId.LIQUID) homeLiquid else homeHonor
 }
@@ -46,6 +47,7 @@ class Settings(private val context: Context) {
         val animTyping = booleanPreferencesKey("anim_typing")
         val animPress = booleanPreferencesKey("anim_press")
         val showDock = booleanPreferencesKey("show_dock")
+        val iconSize = stringPreferencesKey("icon_size")
     }
 
     val prefs: Flow<AppPrefs> = context.glassStore.data.map { p: Preferences ->
@@ -68,6 +70,7 @@ class Settings(private val context: Context) {
                 press = p[K.animPress] ?: true,
             ),
             showDock = p[K.showDock] ?: false,
+            iconSize = p[K.iconSize] ?: "M",
         )
     }
 
@@ -87,6 +90,7 @@ class Settings(private val context: Context) {
             it[K.animPress] = m.press
         }
     }
+    suspend fun setIconSize(v: String) { context.glassStore.edit { it[K.iconSize] = v } }
     suspend fun setShowDock(v: Boolean) { context.glassStore.edit { it[K.showDock] = v } }
     suspend fun setFirstRunDone() { context.glassStore.edit { it[K.firstRun] = false } }
 

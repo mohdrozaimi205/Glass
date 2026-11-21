@@ -220,3 +220,9 @@ class UpdateTest {
     @Test fun noApkGivesNull() = assertNull(u.parse("""{"tag_name":"v1.1.6","assets":[]}"""))
     @Test fun sizeLabel() = assertEquals("23.3 MB", u.sizeLabel(24457949L))
 }
+
+class IconSizeTest {
+    private val i = com.mohdrozaimi.glass.data.IconSize
+    @Test fun sizesGrow() = assertTrue(i.dp("S") < i.dp("M") && i.dp("M") < i.dp("L"))
+    @Test fun unknownIsMedium() = assertEquals(i.dp("M"), i.dp("??"))
+}

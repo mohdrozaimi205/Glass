@@ -83,7 +83,6 @@ import com.mohdrozaimi.glass.glass.GlassCard
 import com.mohdrozaimi.glass.glass.LocalBackdrop
 import com.mohdrozaimi.glass.glass.LocalHomeVisit
 import com.mohdrozaimi.glass.glass.LocalMotion
-import com.mohdrozaimi.glass.glass.LocalWaveTime
 import com.mohdrozaimi.glass.glass.TWO_PI
 import com.mohdrozaimi.glass.glass.drawPastelWaves
 import com.mohdrozaimi.glass.glass.entrance
@@ -125,7 +124,8 @@ fun GlassRoot(vm: HomeViewModel, widgets: WidgetController) {
         val lite = PerfMode.resolve(p.lite, vm.autoLite)
         val img = wallpaper
         val bd = if (img != null && screen.width > 0f) Backdrop(img, screen, lite) else null
-        val waveTime = if (p.motion.wavesOn) {
+        // Gelombang hanya di latar (bukan dalam setiap kad) dan dimatikan dalam Mod Jimat
+        val waveTime = if (p.motion.wavesOn && !lite) {
             val tr = rememberInfiniteTransition(label = "waves")
             tr.animateFloat(
                 0f,
@@ -145,7 +145,6 @@ fun GlassRoot(vm: HomeViewModel, widgets: WidgetController) {
         CompositionLocalProvider(
             LocalBackdrop provides bd,
             LocalMotion provides p.motion,
-            LocalWaveTime provides waveTime,
         ) {
             HomeScreen(vm, widgets, p)
         }
@@ -187,6 +186,7 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
     }
 
     val style = styleFor(p.theme)
+    val iconDp = com.mohdrozaimi.glass.data.IconSize.dp(p.iconSize).dp
     val items = remember(p) { vm.homeItems(p) }
     val appMap = remember(apps) { apps.associateBy { it.pkg } }
     val data = WidgetData(
@@ -282,8 +282,7 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
                                 ),
                             contentAlignment = Alignment.Center,
                         ) {
-                            val big = minOf(item.w, item.h)
-                            AppIconView(app, badges[item.pkg] ?: 0, (54 * big).dp.coerceAtMost(120.dp), showLabel = true, accent = style.accent)
+                            AppIconView(app, badges[item.pkg] ?: 0, iconDp, showLabel = true, accent = style.accent)
                         }
                     }
                     is HomeItem.GlassWidget -> {
@@ -292,9 +291,14 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
                             WidgetKind.WEATHER -> { { searchUrl("cuaca")?.let { Intents.openUrl(context, it) } } }
                             WidgetKind.MAP -> map?.let { m -> { Intents.openMaps(context, m.lat, m.lon) } }
                             WidgetKind.CLOCK -> { { Intents.openAlarms(context) } }
+                            WidgetKind.SEARCH -> { { Intents.openUrl(context, "https://www.google.com") } }
                             else -> null
                         }
-                        GlassCard(
+                        if (item.w == 1 && item.h == 1) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                MiniWidgetIcon(item.kind, data, style, iconDp, click, onLongClick = { edit = true })
+                            }
+                        } else GlassCard(
                             modifier = Modifier.fillMaxSize(),
                             onClick = click,
                             onLongClick = { edit = true },
@@ -405,6 +409,7 @@ fun HomeScreen(vm: HomeViewModel, widgets: WidgetController, p: AppPrefs) {
                 onLite = vm::setLite,
                 onMotion = vm::setMotion,
                 onShowDock = vm::setShowDock,
+                onIconSize = vm::setIconSize,
                 version = vm.currentVersion,
                 update = update,
                 onCheckUpdate = vm::checkUpdate,
@@ -588,6 +593,7 @@ private fun Dock(
     onOpenDrawer: () -> Unit,
     onLongPress: () -> Unit,
 ) {
+    val iconDp = com.mohdrozaimi.glass.data.IconSize.dp(p.iconSize).coerceAtMost(56).dp
     GlassCard(
         modifier = modifier.fillMaxWidth().height(86.dp),
         cornerRadius = 34.dp,
@@ -604,7 +610,7 @@ private fun Dock(
             for (pkg in p.dock) {
                 Box {
                     Box(Modifier.combinedClickable(onClick = { onLaunch(pkg) }, onLongClick = onLongPress)) {
-                        AppIconView(apps[pkg], badges[pkg] ?: 0, 50.dp, showLabel = false, accent = style.accent)
+                        AppIconView(apps[pkg], badges[pkg] ?: 0, iconDp, showLabel = false, accent = style.accent)
                     }
                     if (edit) {
                         Box(

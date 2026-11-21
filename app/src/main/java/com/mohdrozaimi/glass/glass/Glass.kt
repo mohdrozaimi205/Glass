@@ -96,7 +96,6 @@ fun GlassCard(
     val shader = remember { RuntimeShader(GlassShaders.REFRACTION) }
 
     val motion = LocalMotion.current
-    val waveTime = LocalWaveTime.current
     LaunchedEffect(interaction, pressEffect, motion) {
         if (!pressEffect) return@LaunchedEffect
         interaction.interactions.collect { i ->
@@ -164,12 +163,7 @@ fun GlassCard(
                         ).asComposeRenderEffect()
                     }
                 }
-                .drawBehind {
-                    if (bd != null) {
-                        drawBackdrop(bd, pos)
-                        if (waveTime != null) drawPastelWaves(waveTime.value, bd.screen, pos)
-                    }
-                },
+                .drawBehind { if (bd != null) drawBackdrop(bd, pos) },
         )
         // Warna kaca + bingkai bercahaya
         Box(
